@@ -687,6 +687,14 @@
     /* ===== フッター ===== */
     .site-footer { text-align: center; padding: 16px; font-size: 11px; color: var(--text-light); letter-spacing: 2px; border-top: 1px solid var(--border); }
 
+
+    @media print {
+      body > *:not(#printOverlay) { display: none !important; }
+      #printOverlay { position: static !important; overflow: visible !important; padding: 0 !important; }
+      #printOverlay .print-toolbar { display: none !important; }
+      .print-content-inner { padding: 0 !important; }
+    }
+
     /* ===== 印刷 ===== */
     @media print {
       .controls, .modal-overlay, .form-overlay, .fab, .bottom-nav,
@@ -1493,47 +1501,52 @@ function esc(str) {
 // =============================================
 // 保存機能（単体 / まとめて）
 // =============================================
-function buildPrintHTML(list, title) {
-  const rows = list.sort((a,b) => a.year - b.year || (a.month||0)-(b.month||0)).map(e => {
+function buildPrintRows(list) {
+  return list.sort((a,b) => a.year - b.year || (a.month||0)-(b.month||0)).map(e => {
     const dateStr = e.month ? `${e.year}年${e.month}月` : `${e.year}年`;
     const imageHtml = e.image ? `<img src="${e.image}" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:12px;">` : '';
-    const honinHtml = e.honin_kotoba ? `<div style="background:#FFFBF0;border:1px solid #E8D8B0;border-radius:10px;padding:12px 16px;margin-bottom:10px;font-family:'Klee One',cursive;font-size:15px;color:#8B7355;line-height:1.8;"><span style="opacity:0.4;font-size:20px;">&#10077;</span> ${e.honin_kotoba.replace(/\n/g,'<br>')}</div>` : '';
-    const captionParts = [e.caption_dare&&`&#128100;${e.caption_dare}`, e.caption_doko&&`&#128205;${e.caption_doko}`, e.caption_itsu&&`&#128197;${e.caption_itsu}`].filter(Boolean);
+    const honinHtml = e.honin_kotoba ? `<div style="background:#FFFBF0;border:1px solid #E8D8B0;border-radius:10px;padding:12px 16px;margin-bottom:10px;font-size:15px;color:#8B7355;line-height:1.8;">❝ ${esc(e.honin_kotoba).replace(/\n/g,'<br>')}</div>` : '';
+    const captionParts = [e.caption_dare&&`👤${esc(e.caption_dare)}`, e.caption_doko&&`📍${esc(e.caption_doko)}`, e.caption_itsu&&`📅${esc(e.caption_itsu)}`].filter(Boolean);
     const captionHtml = captionParts.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">${captionParts.map(p=>`<span style="font-size:11px;background:#F5F0EB;border:1px solid #E0D0C0;border-radius:6px;padding:2px 8px;">${p}</span>`).join('')}</div>` : '';
-    const episodeHtml = e.episode ? `<p style="font-size:13px;line-height:2;color:#5C4A3A;margin-bottom:8px;">${e.episode.replace(/\n/g,'<br>')}</p>` : '';
-    const emotionHtml = e.emotion ? `<div style="background:#F9EDF0;border-left:3px solid #EDD5DC;padding:8px 12px;border-radius:0 8px 8px 0;font-size:12px;color:#C4869A;font-style:italic;">&#128173; ${e.emotion}</div>` : '';
-    const recorderHtml = e.recorder ? `<div style="font-size:10px;color:#9B8579;text-align:right;margin-top:6px;">&#128394; ${e.recorder}</div>` : '';
+    const episodeHtml = e.episode ? `<p style="font-size:13px;line-height:2;color:#5C4A3A;margin-bottom:8px;">${esc(e.episode).replace(/\n/g,'<br>')}</p>` : '';
+    const emotionHtml = e.emotion ? `<div style="background:#F9EDF0;border-left:3px solid #EDD5DC;padding:8px 12px;border-radius:0 8px 8px 0;font-size:12px;color:#C4869A;font-style:italic;">💭 ${esc(e.emotion)}</div>` : '';
+    const recorderHtml = e.recorder ? `<div style="font-size:10px;color:#9B8579;text-align:right;margin-top:6px;">記録：${esc(e.recorder)}</div>` : '';
     return `<div style="background:#FFFEF9;border:1px solid #E8D9D0;border-radius:14px;padding:20px;margin-bottom:20px;page-break-inside:avoid;">
-      <div style="font-family:'Klee One',cursive;font-size:12px;color:#C4869A;margin-bottom:6px;">${dateStr}</div>
-      <h2 style="font-family:'Noto Serif JP',serif;font-size:18px;font-weight:600;color:#5C4A3A;margin-bottom:12px;line-height:1.5;">${e.title}</h2>
+      <div style="font-size:12px;color:#C4869A;margin-bottom:6px;">${dateStr}</div>
+      <h2 style="font-size:18px;font-weight:600;color:#5C4A3A;margin-bottom:12px;line-height:1.5;">${esc(e.title)}</h2>
       ${imageHtml}${captionHtml}${honinHtml}${episodeHtml}${emotionHtml}${recorderHtml}
     </div>`;
   }).join('');
+}
 
-  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
-    <title>${title}</title>
-    <style>
-      body { font-family: 'Noto Serif JP',serif; background:#FDF8F5; margin:0; padding:24px; color:#5C4A3A; }
-      h1 { font-family:'Klee One',cursive; color:#C4869A; text-align:center; font-size:24px; letter-spacing:4px; margin-bottom:6px; }
-      .subtitle { text-align:center; font-size:12px; color:#9B8579; letter-spacing:2px; margin-bottom:28px; }
-      @media print { @page { margin:18mm; } body { background:#fff; } }
-    </style>
-  </head><body>
-    <h1>けあるん</h1>
-    <div class="subtitle">${title}</div>
-    ${rows}
-    <script>window.onload=()=>{ window.print(); }<\/script>
-  </body></html>`;
+function showPrintOverlay(list, title) {
+  const existing = document.getElementById('printOverlay');
+  if (existing) existing.remove();
+  const rows = buildPrintRows(list);
+  const overlay = document.createElement('div');
+  overlay.id = 'printOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#FDF8F5;z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch;';
+  overlay.innerHTML = `
+    <div class="print-toolbar" style="display:flex;gap:10px;padding:14px 16px;background:rgba(253,248,245,0.97);backdrop-filter:blur(8px);border-bottom:1px solid #E8D9D0;position:sticky;top:0;z-index:1;">
+      <button onclick="document.getElementById('printOverlay').remove();document.body.style.overflow='';" style="flex:1;padding:13px;border-radius:14px;background:#F0EBE6;border:1.5px solid #E8D9D0;font-size:13px;color:#9B8579;cursor:pointer;">✕ 閉じる</button>
+      <button onclick="window.print();" style="flex:2;padding:13px;border-radius:14px;background:linear-gradient(135deg,#7BAA8B,#5A9470);color:#fff;border:none;font-size:13px;letter-spacing:1px;cursor:pointer;">🖨 印刷・PDFに保存</button>
+    </div>
+    <div class="print-content-inner" style="padding:20px;max-width:600px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:22px;color:#C4869A;letter-spacing:4px;margin-bottom:4px;">けあるん</div>
+        <div style="font-size:12px;color:#9B8579;letter-spacing:2px;">${title}</div>
+      </div>
+      ${rows}
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
 }
 
 function saveOneEntry(id) {
   const e = entries.find(x => x.id === id);
   if (!e) return;
   const dateStr = e.month ? `${e.year}年${e.month}月` : `${e.year}年`;
-  const win = window.open('', '_blank');
-  win.document.write(buildPrintHTML([e], `${dateStr} ・ ${e.title}`));
-  win.document.close();
+  showPrintOverlay([e], `${dateStr} ・ ${esc(e.title)}`);
 }
 
 function openBulkSave() {
@@ -1564,9 +1577,7 @@ function executeBulkSave() {
   const to   = parseInt(document.getElementById('bulkYearTo').value);
   const list = entries.filter(e => e.year >= from && e.year <= to);
   if (!list.length) { alert('該当する記録がありません。'); return; }
-  const win = window.open('', '_blank');
-  win.document.write(buildPrintHTML(list, `${from}年 〜 ${to}年`));
-  win.document.close();
+  showPrintOverlay(list, `${from}年 〜 ${to}年`);
   closeBulkSave();
 }
 
