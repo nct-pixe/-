@@ -609,6 +609,60 @@
     .confirm-btn-cancel { background: var(--bg); color: var(--text-light); border: 1.5px solid var(--border); }
     .confirm-btn-ok { background: #C47A7A; color: #fff; }
 
+
+    /* ===== 保存ボタン ===== */
+    .card-save-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 14px;
+      background: var(--sage-pale); border: 1px solid var(--sage);
+      color: var(--sage); font-family: var(--font-body); font-size: 11px;
+      cursor: pointer; letter-spacing: 1px; transition: transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card-save-btn:active { transform: scale(0.93); }
+
+    /* ===== まとめて保存モーダル ===== */
+    .bulk-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(92,74,58,0.5); z-index: 250; backdrop-filter: blur(3px);
+    }
+    .bulk-overlay.open { display: flex; align-items: flex-end; }
+    .bulk-sheet {
+      background: var(--card-bg); border-radius: 24px 24px 0 0;
+      padding: 0 0 44px; width: 100%; max-width: 600px;
+      margin: 0 auto; animation: slideUp 0.25s ease;
+    }
+    .bulk-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 14px auto 0; }
+    .bulk-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 12px; border-bottom: 1px solid var(--border);
+    }
+    .bulk-title { font-family: var(--font-deco); font-size: 16px; color: var(--sepia); letter-spacing: 2px; }
+    .bulk-cancel { background: none; border: none; color: var(--text-light); font-size: 22px; cursor: pointer; }
+    .bulk-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .bulk-label { font-size: 11px; letter-spacing: 2px; color: var(--text-light); margin-bottom: 6px; }
+    .bulk-year-row { display: flex; align-items: center; gap: 10px; }
+    .bulk-year-select {
+      flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 12px;
+      background: var(--bg); font-family: var(--font-body); font-size: 15px;
+      color: var(--text); outline: none; -webkit-appearance: none;
+    }
+    .bulk-year-select:focus { border-color: var(--rose); }
+    .bulk-tilde { font-size: 20px; color: var(--text-light); flex-shrink: 0; }
+    .bulk-preview {
+      background: var(--rose-pale); border: 1px solid var(--rose-light);
+      border-radius: 12px; padding: 12px 16px; text-align: center;
+      font-size: 13px; color: var(--rose); letter-spacing: 1px;
+    }
+    .bulk-save-btn {
+      width: 100%; padding: 16px; border-radius: 16px; border: none;
+      background: linear-gradient(135deg, var(--sage), #5A9470);
+      color: #fff; font-family: var(--font-body); font-size: 15px;
+      cursor: pointer; letter-spacing: 2px; transition: transform 0.1s;
+    }
+    .bulk-save-btn:active { transform: scale(0.97); }
+    .bulk-save-btn:disabled { opacity: 0.5; }
+
     /* ===== データ管理 ===== */
     .data-mgmt-section { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 16px; padding: 18px 16px; margin-top: 20px; }
     .data-mgmt-title { font-family: var(--font-deco); font-size: 14px; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -674,6 +728,7 @@
         <input class="search-input" type="text" id="searchInput" placeholder="キーワードで検索…">
       </div>
       <button class="view-mode-btn" onclick="openViewMode()">🌿 一緒に見る</button>
+      <button class="view-mode-btn" style="background:linear-gradient(135deg,var(--sage),#5A9470);" onclick="openBulkSave()">📄 まとめて保存</button>
     </div>
     <div class="filter-row" id="filterRow">
       <button class="filter-btn active" data-tag="all">すべて</button>
@@ -805,6 +860,32 @@
     <span class="nav-tab-indicator"></span>
   </button>
 </nav>
+
+
+<!-- まとめて保存モーダル -->
+<div class="bulk-overlay" id="bulkOverlay">
+  <div class="bulk-sheet">
+    <div class="bulk-handle"></div>
+    <div class="bulk-header">
+      <span class="bulk-title">📄 まとめて保存</span>
+      <button class="bulk-cancel" onclick="closeBulkSave()">✕</button>
+    </div>
+    <div class="bulk-body">
+      <div>
+        <div class="bulk-label">保存する期間を選んでください</div>
+        <div class="bulk-year-row">
+          <select class="bulk-year-select" id="bulkYearFrom"></select>
+          <span class="bulk-tilde">〜</span>
+          <select class="bulk-year-select" id="bulkYearTo"></select>
+        </div>
+      </div>
+      <div class="bulk-preview" id="bulkPreview">── 件の思い出を保存</div>
+      <button class="bulk-save-btn" id="bulkSaveBtn" onclick="executeBulkSave()">
+        この範囲をPDFに保存 🖨
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- 閲覧モード（認知症ケア） -->
 <div class="view-overlay" id="viewOverlay">
@@ -1072,7 +1153,10 @@ function createCard(e) {
       </div>
     </div>
     ${imageHtml}${honinHtml}${captionHtml}${episodeHtml}${emotionHtml}${recorderHtml}
-    <div class="card-footer"><span class="card-more">くわしく読む →</span></div>`;
+    <div class="card-footer" style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="card-more">くわしく読む →</span>
+      <button class="card-save-btn" onclick="event.stopPropagation();saveOneEntry('${e.id}')">🖨 保存</button>
+    </div>`;
   card.addEventListener('click', () => openModal(e.id));
   return card;
 }
@@ -1404,6 +1488,95 @@ function esc(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+
+// =============================================
+// 保存機能（単体 / まとめて）
+// =============================================
+function buildPrintHTML(list, title) {
+  const rows = list.sort((a,b) => a.year - b.year || (a.month||0)-(b.month||0)).map(e => {
+    const dateStr = e.month ? `${e.year}年${e.month}月` : `${e.year}年`;
+    const imageHtml = e.image ? `<img src="${e.image}" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:12px;">` : '';
+    const honinHtml = e.honin_kotoba ? `<div style="background:#FFFBF0;border:1px solid #E8D8B0;border-radius:10px;padding:12px 16px;margin-bottom:10px;font-family:'Klee One',cursive;font-size:15px;color:#8B7355;line-height:1.8;"><span style="opacity:0.4;font-size:20px;">&#10077;</span> ${e.honin_kotoba.replace(/\n/g,'<br>')}</div>` : '';
+    const captionParts = [e.caption_dare&&`&#128100;${e.caption_dare}`, e.caption_doko&&`&#128205;${e.caption_doko}`, e.caption_itsu&&`&#128197;${e.caption_itsu}`].filter(Boolean);
+    const captionHtml = captionParts.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">${captionParts.map(p=>`<span style="font-size:11px;background:#F5F0EB;border:1px solid #E0D0C0;border-radius:6px;padding:2px 8px;">${p}</span>`).join('')}</div>` : '';
+    const episodeHtml = e.episode ? `<p style="font-size:13px;line-height:2;color:#5C4A3A;margin-bottom:8px;">${e.episode.replace(/\n/g,'<br>')}</p>` : '';
+    const emotionHtml = e.emotion ? `<div style="background:#F9EDF0;border-left:3px solid #EDD5DC;padding:8px 12px;border-radius:0 8px 8px 0;font-size:12px;color:#C4869A;font-style:italic;">&#128173; ${e.emotion}</div>` : '';
+    const recorderHtml = e.recorder ? `<div style="font-size:10px;color:#9B8579;text-align:right;margin-top:6px;">&#128394; ${e.recorder}</div>` : '';
+    return `<div style="background:#FFFEF9;border:1px solid #E8D9D0;border-radius:14px;padding:20px;margin-bottom:20px;page-break-inside:avoid;">
+      <div style="font-family:'Klee One',cursive;font-size:12px;color:#C4869A;margin-bottom:6px;">${dateStr}</div>
+      <h2 style="font-family:'Noto Serif JP',serif;font-size:18px;font-weight:600;color:#5C4A3A;margin-bottom:12px;line-height:1.5;">${e.title}</h2>
+      ${imageHtml}${captionHtml}${honinHtml}${episodeHtml}${emotionHtml}${recorderHtml}
+    </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+    <title>${title}</title>
+    <style>
+      body { font-family: 'Noto Serif JP',serif; background:#FDF8F5; margin:0; padding:24px; color:#5C4A3A; }
+      h1 { font-family:'Klee One',cursive; color:#C4869A; text-align:center; font-size:24px; letter-spacing:4px; margin-bottom:6px; }
+      .subtitle { text-align:center; font-size:12px; color:#9B8579; letter-spacing:2px; margin-bottom:28px; }
+      @media print { @page { margin:18mm; } body { background:#fff; } }
+    </style>
+  </head><body>
+    <h1>けあるん</h1>
+    <div class="subtitle">${title}</div>
+    ${rows}
+    <script>window.onload=()=>{ window.print(); }<\/script>
+  </body></html>`;
+}
+
+function saveOneEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  const dateStr = e.month ? `${e.year}年${e.month}月` : `${e.year}年`;
+  const win = window.open('', '_blank');
+  win.document.write(buildPrintHTML([e], `${dateStr} ・ ${e.title}`));
+  win.document.close();
+}
+
+function openBulkSave() {
+  const years = [...new Set(entries.map(e => e.year))].sort((a,b) => a-b);
+  if (!years.length) { alert('まだ記録がありません。'); return; }
+  const fromSel = document.getElementById('bulkYearFrom');
+  const toSel   = document.getElementById('bulkYearTo');
+  fromSel.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+  toSel.innerHTML   = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+  toSel.value = years[years.length - 1];
+  updateBulkPreview();
+  document.getElementById('bulkOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeBulkSave() {
+  document.getElementById('bulkOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function updateBulkPreview() {
+  const from = parseInt(document.getElementById('bulkYearFrom').value);
+  const to   = parseInt(document.getElementById('bulkYearTo').value);
+  const count = entries.filter(e => e.year >= from && e.year <= to).length;
+  document.getElementById('bulkPreview').textContent = `${from}年 〜 ${to}年：${count}件の思い出`;
+  document.getElementById('bulkSaveBtn').disabled = count === 0;
+}
+function executeBulkSave() {
+  const from = parseInt(document.getElementById('bulkYearFrom').value);
+  const to   = parseInt(document.getElementById('bulkYearTo').value);
+  const list = entries.filter(e => e.year >= from && e.year <= to);
+  if (!list.length) { alert('該当する記録がありません。'); return; }
+  const win = window.open('', '_blank');
+  win.document.write(buildPrintHTML(list, `${from}年 〜 ${to}年`));
+  win.document.close();
+  closeBulkSave();
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'bulkYearFrom' || e.target.id === 'bulkYearTo') updateBulkPreview();
+});
+
+document.getElementById('bulkOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeBulkSave();
+});
 
 // =============================================
 // データ管理（バックアップ・復元）
